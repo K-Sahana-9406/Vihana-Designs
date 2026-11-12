@@ -1,0 +1,285 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id            String         @id @default(cuid())
+  email         String         @unique
+  name          String
+  passwordHash  String
+  role          String         @default("USER") // "USER" | "ADMIN"
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  profile       UserProfile?
+  orders        Order[]
+  reviews       ProductReview[]
+  auditLogs     AuditLog[]
+
+  @@map("users")
+}
+
+model UserProfile {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  phone     String?
+  company   String?
+  address   String?
+  avatar    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("user_profiles")
+}
+
+model ProductCategory {
+  id          String    @id @default(cuid())
+  name        String
+  slug        String    @unique
+  description String?
+  icon        String?
+  sortOrder   Int       @default(0)
+  createdAt   DateTime  @default(now())
+  products    Product[]
+
+  @@map("product_categories")
+}
+
+model Product {
+  id                 String               @id @default(cuid())
+  title              String
+  slug               String               @unique
+  shortDesc          String
+  fullDesc           String
+  pricePaise         Int
+  discountPricePaise Int?
+  coverImage         String
+  previewImages      String               @default("[]") // JSON array of URLs
+  format             String               @default("Digital Download (ZIP / PDF)")
+  compatibility      String               @default("Web / Mobile / Notion / Figma")
+  whatsIncluded      String               @default("[]") // JSON array of items
+  benefits           String               @default("[]") // JSON array of benefits
+  tags               String               @default("[]") // JSON array of tags
+  isFeatured         Boolean              @default(false)
+  isPublished        Boolean              @default(true)
+  categoryId         String
+  category           ProductCategory      @relation(fields: [categoryId], references: [id])
+  downloadFileUrl    String?              // Secure internal file reference
+  fileName           String?              @default("vihana-product.zip")
+  fileSizeBytes      Int?                 @default(15728640)
+  salesCount         Int                  @default(0)
+  rating             Float                @default(4.9)
+  reviewCount        Int                  @default(0)
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+  orderItems         OrderItem[]
+  reviews            ProductReview[]
+  entitlements       DownloadEntitlement[]
+
+  @@map("products")
+}
+
+model ProductReview {
+  id         String   @id @default(cuid())
+  productId  String
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  userName   String
+  rating     Int      @default(5)
+  comment    String
+  isApproved Boolean  @default(true)
+  createdAt  DateTime @default(now())
+
+  @@map("product_reviews")
+}
+
+model Order {
+  id                 String                @id @default(cuid())
+  orderNumber        String                @unique
+  userId             String?
+  user               User?                 @relation(fields: [userId], references: [id], onDelete: SetNull)
+  customerName       String
+  customerEmail      String
+  customerPhone      String?
+  billingAddress     String?
+  totalAmountPaise   Int
+  discountAmountPaise Int                  @default(0)
+  couponCode         String?
+  status             String                @default("PENDING") // PENDING | PAID | FAILED | REFUNDED
+  paymentGateway     String                @default("RAZORPAY") // RAZORPAY | TEST_GATEWAY
+  gatewayOrderId     String?
+  paymentId          String?
+  signature          String?
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
+  items              OrderItem[]
+  entitlements       DownloadEntitlement[]
+
+  @@map("orders")
+}
+
+model OrderItem {
+  id         String   @id @default(cuid())
+  orderId    String
+  order      Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId  String
+  product    Product  @relation(fields: [productId], references: [id])
+  title      String
+  pricePaise Int
+  createdAt  DateTime @default(now())
+
+  @@map("order_items")
+}
+
+model DownloadEntitlement {
+  id            String        @id @default(cuid())
+  orderId       String
+  order         Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId     String
+  product       Product       @relation(fields: [productId], references: [id])
+  token         String        @unique @default(cuid())
+  downloadCount Int           @default(0)
+  maxDownloads  Int           @default(10)
+  expiresAt     DateTime
+  isRevoked     Boolean       @default(false)
+  createdAt     DateTime      @default(now())
+  logs          DownloadLog[]
+
+  @@map("download_entitlements")
+}
+
+model DownloadLog {
+  id            String              @id @default(cuid())
+  entitlementId String
+  entitlement   DownloadEntitlement @relation(fields: [entitlementId], references: [id], onDelete: Cascade)
+  ipAddress     String?
+  userAgent     String?
+  downloadedAt  DateTime            @default(now())
+
+  @@map("download_logs")
+}
+
+model Enquiry {
+  id                 String   @id @default(cuid())
+  referenceId        String   @unique
+  name               String
+  email              String
+  phone              String?
+  brandName          String?
+  serviceType        String
+  industry           String?
+  projectDescription String
+  requiredFeatures   String   @default("[]") // JSON array of features
+  budgetRange        String
+  timeline           String
+  referenceLinks     String?
+  status             String   @default("NEW") // NEW | CONTACTED | DISCUSSION | CONVERTED | REJECTED
+  internalNotes      String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@map("enquiries")
+}
+
+model PortfolioProject {
+  id           String   @id @default(cuid())
+  title        String
+  slug         String   @unique
+  category     String   // Business Websites | Landing Pages | Portfolio Websites | Web Applications | Creative Projects
+  client       String
+  description  String
+  challenge    String
+  solution     String
+  technologies String   @default("[]") // JSON array of strings
+  coverImage   String
+  galleryImages String  @default("[]") // JSON array of strings
+  liveUrl      String?
+  metrics      String   @default("[]") // JSON array of { label, value }
+  isFeatured   Boolean  @default(false)
+  isPublished  Boolean  @default(true)
+  sortOrder    Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("portfolio_projects")
+}
+
+model Testimonial {
+  id         String   @id @default(cuid())
+  authorName String
+  authorRole String
+  company    String
+  quote      String
+  avatarUrl  String?
+  rating     Int      @default(5)
+  isFeatured Boolean  @default(true)
+  createdAt  DateTime @default(now())
+
+  @@map("testimonials")
+}
+
+model Faq {
+  id        String   @id @default(cuid())
+  question  String
+  answer    String
+  category  String   @default("General") // General | Digital Products | Services & Development | Payments & Delivery
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@map("faqs")
+}
+
+model Coupon {
+  id                 String    @id @default(cuid())
+  code               String    @unique
+  discountType       String    @default("PERCENTAGE") // PERCENTAGE | FIXED
+  discountValue      Int       // 20 = 20% or 50000 = ₹500 in paise
+  minOrderValuePaise Int       @default(0)
+  maxDiscountPaise   Int?
+  usageLimit         Int       @default(100)
+  usageCount         Int       @default(0)
+  expiresAt          DateTime?
+  isActive           Boolean   @default(true)
+  createdAt          DateTime  @default(now())
+
+  @@map("coupons")
+}
+
+model NewsletterSubscriber {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  status       String   @default("SUBSCRIBED") // SUBSCRIBED | UNSUBSCRIBED
+  subscribedAt DateTime @default(now())
+
+  @@map("newsletter_subscribers")
+}
+
+model SiteSetting {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  value       String
+  description String?
+  updatedAt   DateTime @updatedAt
+
+  @@map("site_settings")
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  adminId    String?
+  admin      User?    @relation(fields: [adminId], references: [id], onDelete: SetNull)
+  action     String
+  targetType String
+  targetId   String?
+  details    String?
+  createdAt  DateTime @default(now())
+
+  @@map("audit_logs")
+}
+
