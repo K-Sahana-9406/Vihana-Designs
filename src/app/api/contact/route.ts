@@ -15,7 +15,7 @@ export async function POST(request: Request) {
 
     const contactEmail = process.env.CONTACT_EMAIL || 'hello@vihanadesigns.com';
 
-    await sendEmail({
+    const emailResult = await sendEmail({
       to: contactEmail,
       subject: `[STUDIO INQUIRY] ${subject || 'New Contact Message'} from ${name}`,
       html: `
@@ -26,6 +26,17 @@ export async function POST(request: Request) {
         <p>${message.replace(/\n/g, '<br/>')}</p>
       `,
     });
+
+    if (!emailResult.success) {
+      return NextResponse.json(
+        {
+          error:
+            emailResult.error ||
+            'Email service is currently unconfigured. Please configure SMTP/Brevo credentials in Vercel settings.',
+        },
+        { status: 503 }
+      );
+    }
 
     return NextResponse.json({
       success: true,

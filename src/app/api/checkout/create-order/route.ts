@@ -94,7 +94,23 @@ export async function POST(request: Request) {
     });
 
     const paymentMode = process.env.PAYMENT_MODE || 'TEST';
-    const razorpayKey = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || 'rzp_test_vihana';
+
+    if (paymentMode === 'LIVE') {
+      if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
+        return NextResponse.json(
+          {
+            error:
+              'Payment gateway unconfigured: PAYMENT_MODE is set to LIVE but RAZORPAY_KEY_ID or RAZORPAY_KEY_SECRET is not configured in environment variables. Please add your Razorpay credentials in Vercel.',
+          },
+          { status: 503 }
+        );
+      }
+    }
+
+    const razorpayKey =
+      paymentMode === 'LIVE'
+        ? process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || process.env.RAZORPAY_KEY_ID
+        : 'rzp_test_vihana';
 
     return NextResponse.json({
       success: true,

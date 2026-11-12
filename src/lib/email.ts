@@ -13,8 +13,21 @@ export async function sendEmail({ to, subject, html }: EmailPayload): Promise<{ 
     const pass = process.env.SMTP_PASS;
 
     if (!host || !user || !pass) {
-      console.log(`[EMAIL SIMULATED] To: ${to} | Subject: ${subject}`);
-      return { success: true, messageId: 'simulated-' + Date.now() };
+      const missingVars = [
+        !host && 'SMTP_HOST',
+        !user && 'SMTP_USER',
+        !pass && 'SMTP_PASS',
+      ]
+        .filter(Boolean)
+        .join(', ');
+
+      console.warn(
+        `[EMAIL CONFIG] Delivery skipped: Missing SMTP/Brevo credentials (${missingVars}). Recipient: ${to}`
+      );
+      return {
+        success: false,
+        error: `Email service unconfigured: Missing ${missingVars}. Please set up SMTP/Brevo credentials in Vercel project settings.`,
+      };
     }
 
     const transporter = nodemailer.createTransport({
@@ -34,7 +47,6 @@ export async function sendEmail({ to, subject, html }: EmailPayload): Promise<{ 
     return { success: true, messageId: info.messageId };
   } catch (err: any) {
     console.error('[EMAIL ERROR]', err.message);
-    // Never throw to avoid failing checkout
     return { success: false, error: err.message };
   }
 }

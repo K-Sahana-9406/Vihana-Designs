@@ -55,7 +55,7 @@ export async function POST(request: Request) {
       serviceType,
     });
 
-    await sendEmail({
+    const clientEmailRes = await sendEmail({
       to: email,
       subject: `Project Enquiry Received [${referenceId}] — VIHANA DESIGNS`,
       html: emailHtml,
@@ -80,7 +80,10 @@ export async function POST(request: Request) {
     return NextResponse.json({
       success: true,
       referenceId,
-      message: 'Enquiry recorded successfully.',
+      message: clientEmailRes.success
+        ? 'Enquiry recorded successfully. Confirmation email sent.'
+        : 'Enquiry recorded in database. Note: Email notifications are currently disabled until SMTP/Brevo credentials are configured.',
+      emailDelivered: clientEmailRes.success,
     });
   } catch (err: any) {
     console.error('[ENQUIRY ERROR]', err);

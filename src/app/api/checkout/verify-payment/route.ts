@@ -30,21 +30,47 @@ export async function POST(request: Request) {
     }
 
     // 1. Signature Verification if Live Razorpay
-    if (process.env.PAYMENT_MODE === 'LIVE' && !testSimulation) {
-      const secret = process.env.RAZORPAY_KEY_SECRET;
-      if (secret && signature && order.gatewayOrderId) {
-        const generatedSignature = crypto
-          .createHmac('sha256', secret)
-          .update(`${order.gatewayOrderId}|${paymentId}`)
-          .digest('hex');
+    if (process.env.PAYMENT_MODE === 'LIVE') {
+      if (testSimulation) {
+        return NextResponse.json(
+          {
+            error:
+              'Test simulation is rejected when PAYMENT_MODE is set to LIVE. Real Razorpay payment confirmation is required.',
+          },
+          { status: 400 }
+        );
+      }
 
-        if (generatedSignature !== signature) {
-          await prisma.order.update({
-            where: { id: order.id },
-            data: { status: 'FAILED' },
-          });
-          return NextResponse.json({ error: 'Payment signature verification failed' }, { status: 400 });
-        }
+      const secret = process.env.RAZORPAY_KEY_SECRET;
+      if (!secret) {
+        return NextResponse.json(
+          {
+            error:
+              'Payment gateway unconfigured: RAZORPAY_KEY_SECRET is not configured in environment variables. Please add your Razorpay credentials in Vercel.',
+          },
+          { status: 503 }
+        );
+      }
+
+      if (!signature || !paymentId) {
+        return NextResponse.json(
+          { error: 'Payment signature and payment ID are required for LIVE payment verification.' },
+          { status: 400 }
+        );
+      }
+
+      const orderRef = order.gatewayOrderId || order.orderNumber;
+      const generatedSignature = crypto
+        .createHmac('sha256', secret)
+        .update(`${orderRef}|${paymentId}`)
+        .digest('hex');
+
+      if (generatedSignature !== signature) {
+        await prisma.order.update({
+          where: { id: order.id },
+          data: { status: 'FAILED' },
+        });
+        return NextResponse.json({ error: 'Payment signature verification failed' }, { status: 400 });
       }
     }
 
@@ -111,7 +137,7 @@ export async function POST(request: Request) {
       downloadUrl: downloadPageUrl,
     });
 
-    await sendEmail({
+    const emailResult = await sendEmail({
       to: order.customerEmail,
       subject: `Your Digital Files are Ready — VIHANA DESIGNS Order #${order.orderNumber}`,
       html: emailHtml,
@@ -122,6 +148,8 @@ export async function POST(request: Request) {
       orderNumber: order.orderNumber,
       downloadTokens: entitlements.map((e) => ({ productId: e.productId, token: e.token })),
       redirectUrl: `/thank-you?order=${order.orderNumber}&token=${firstToken}`,
+      emailSent: emailResult.success,
+      emailNotice: emailResult.success ? undefined : emailResult.error,
     });
   } catch (err: any) {
     console.error('[VERIFY PAYMENT ERROR]', err);
