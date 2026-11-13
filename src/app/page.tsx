@@ -26,29 +26,41 @@ import {
 export const revalidate = 0; // Fresh data
 
 export default async function HomePage() {
-  // Fetch featured products, projects, testimonials, faqs
-  const [featuredProducts, portfolioProjects, testimonials, faqs] = await Promise.all([
-    prisma.product.findMany({
-      where: { isPublished: true, isFeatured: true },
-      take: 4,
-      include: { category: true },
-      orderBy: { salesCount: 'desc' },
-    }),
-    prisma.portfolioProject.findMany({
-      where: { isPublished: true, isFeatured: true },
-      take: 3,
-      orderBy: { sortOrder: 'asc' },
-    }),
-    prisma.testimonial.findMany({
-      where: { isFeatured: true },
-      take: 3,
-      orderBy: { createdAt: 'desc' },
-    }),
-    prisma.faq.findMany({
-      take: 4,
-      orderBy: { sortOrder: 'asc' },
-    }),
-  ]);
+  // Fetch featured products, projects, testimonials, faqs with safe fallback
+  let featuredProducts: any[] = [];
+  let portfolioProjects: any[] = [];
+  let testimonials: any[] = [];
+  let faqs: any[] = [];
+
+  try {
+    [featuredProducts, portfolioProjects, testimonials, faqs] = await Promise.all([
+      prisma.product.findMany({
+        where: { isPublished: true, isFeatured: true },
+        take: 4,
+        include: { category: true },
+        orderBy: { salesCount: 'desc' },
+      }),
+      prisma.portfolioProject.findMany({
+        where: { isPublished: true, isFeatured: true },
+        take: 3,
+        orderBy: { sortOrder: 'asc' },
+      }),
+      prisma.testimonial.findMany({
+        where: { isFeatured: true },
+        take: 3,
+        orderBy: { createdAt: 'desc' },
+      }),
+      prisma.faq.findMany({
+        take: 4,
+        orderBy: { sortOrder: 'asc' },
+      }),
+    ]);
+  } catch (error) {
+    console.error(
+      '[HOME PAGE DB ERROR] Failed to fetch dynamic database records (tables uninitialized or connection down):',
+      error instanceof Error ? error.message : 'Database error'
+    );
+  }
 
   const studioServices = [
     {

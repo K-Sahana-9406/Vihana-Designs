@@ -12,10 +12,19 @@ export const metadata = {
 export const revalidate = 0;
 
 export default async function PortfolioPage() {
-  const projects = await prisma.portfolioProject.findMany({
-    where: { isPublished: true },
-    orderBy: { sortOrder: 'asc' },
-  });
+  let projects: any[] = [];
+
+  try {
+    projects = await prisma.portfolioProject.findMany({
+      where: { isPublished: true },
+      orderBy: { sortOrder: 'asc' },
+    });
+  } catch (error) {
+    console.error(
+      '[PORTFOLIO PAGE DB ERROR] Failed to fetch portfolio projects:',
+      error instanceof Error ? error.message : 'Database error'
+    );
+  }
 
   return (
     <div className="bg-[#F8F9FC] min-h-screen py-16 md:py-24">

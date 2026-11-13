@@ -13,16 +13,20 @@ export async function generateMetadata({
 }: {
   params: { slug: string };
 }): Promise<Metadata> {
-  const project = await prisma.portfolioProject.findUnique({
-    where: { slug: params.slug },
-  });
+  try {
+    const project = await prisma.portfolioProject.findUnique({
+      where: { slug: params.slug },
+    });
 
-  if (!project) return { title: 'Case Study Not Found' };
+    if (!project) return { title: 'Case Study Not Found' };
 
-  return {
-    title: `${project.title} — Case Study | VIHANA DESIGNS`,
-    description: project.description,
-  };
+    return {
+      title: `${project.title} — Case Study | VIHANA DESIGNS`,
+      description: project.description,
+    };
+  } catch (error) {
+    return { title: 'Case Study | VIHANA DESIGNS' };
+  }
 }
 
 export default async function CaseStudyPage({
@@ -30,9 +34,15 @@ export default async function CaseStudyPage({
 }: {
   params: { slug: string };
 }) {
-  const project = await prisma.portfolioProject.findUnique({
-    where: { slug: params.slug },
-  });
+  let project: any = null;
+
+  try {
+    project = await prisma.portfolioProject.findUnique({
+      where: { slug: params.slug },
+    });
+  } catch (error) {
+    console.error('[PORTFOLIO CASE STUDY ERROR]', error instanceof Error ? error.message : error);
+  }
 
   if (!project || !project.isPublished) {
     notFound();

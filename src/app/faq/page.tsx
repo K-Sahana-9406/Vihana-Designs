@@ -10,9 +10,18 @@ export const metadata = {
 export const revalidate = 0;
 
 export default async function FaqPage() {
-  const faqs = await prisma.faq.findMany({
-    orderBy: { sortOrder: 'asc' },
-  });
+  let faqs: any[] = [];
+
+  try {
+    faqs = await prisma.faq.findMany({
+      orderBy: { sortOrder: 'asc' },
+    });
+  } catch (error) {
+    console.error(
+      '[FAQ PAGE DB ERROR] Failed to fetch FAQs:',
+      error instanceof Error ? error.message : 'Database error'
+    );
+  }
 
   return <FaqClient initialFaqs={faqs} />;
 }

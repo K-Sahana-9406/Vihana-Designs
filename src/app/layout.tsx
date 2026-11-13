@@ -6,8 +6,21 @@ import AnnouncementBar from '@/components/AnnouncementBar';
 import { CartProvider } from '@/components/CartContext';
 import { ToastProvider } from '@/components/Toast';
 
+function getValidUrl(urlStr?: string): URL {
+  if (!urlStr) return new URL('https://vihanadesigns.com');
+  let trimmed = urlStr.trim().replace(/^["']|["']$/g, '');
+  if (!trimmed.startsWith('http://') && !trimmed.startsWith('https://')) {
+    trimmed = `https://${trimmed}`;
+  }
+  try {
+    return new URL(trimmed);
+  } catch {
+    return new URL('https://vihanadesigns.com');
+  }
+}
+
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'https://vihanadesigns.com'),
+  metadataBase: getValidUrl(process.env.NEXT_PUBLIC_APP_URL),
   title: {
     default: 'VIHANA DESIGNS — Premium Digital Products & Creative Technology Studio',
     template: '%s | VIHANA DESIGNS',

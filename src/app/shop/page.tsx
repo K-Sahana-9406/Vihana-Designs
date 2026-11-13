@@ -11,16 +11,26 @@ export const metadata = {
 export const revalidate = 0;
 
 export default async function ShopPage() {
-  const [categories, products] = await Promise.all([
-    prisma.productCategory.findMany({
-      orderBy: { sortOrder: 'asc' },
-    }),
-    prisma.product.findMany({
-      where: { isPublished: true },
-      include: { category: true },
-      orderBy: { salesCount: 'desc' },
-    }),
-  ]);
+  let categories: any[] = [];
+  let products: any[] = [];
+
+  try {
+    [categories, products] = await Promise.all([
+      prisma.productCategory.findMany({
+        orderBy: { sortOrder: 'asc' },
+      }),
+      prisma.product.findMany({
+        where: { isPublished: true },
+        include: { category: true },
+        orderBy: { salesCount: 'desc' },
+      }),
+    ]);
+  } catch (error) {
+    console.error(
+      '[SHOP PAGE DB ERROR] Failed to fetch shop products:',
+      error instanceof Error ? error.message : 'Database error'
+    );
+  }
 
   return <ShopClient categories={categories} initialProducts={products} />;
 }
